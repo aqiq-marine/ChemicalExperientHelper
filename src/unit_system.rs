@@ -22,6 +22,26 @@ impl<
     const THETA: i8,
     const I: i8,
     const J: i8,
+> UnitSystem<N, M, L, T, THETA, I, J> {
+    fn milli_liter() -> UnitSystem<0, 0, 3, 0, 0, 0, 0> {
+        UnitSystem {pow10coe: -2 * 3}
+    }
+    fn centi() -> Self {
+        Self {pow10coe: -2}
+    }
+    fn milli() -> Self {
+        Self {pow10coe: -3}
+    }
+}
+
+impl<
+    const N: i8,
+    const M: i8,
+    const L: i8,
+    const T: i8,
+    const THETA: i8,
+    const I: i8,
+    const J: i8,
 > ops::Add for UnitSystem<N, M, L, T, THETA, I, J> {
     type Output = Self;
     fn add(self, rhs: Self) -> Self::Output {
@@ -166,6 +186,12 @@ impl ops::Div for SigDig {
     }
 }
 
+impl std::cmp::PartialOrd for SigDig {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.digit.partial_cmp(&other.digit)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct DimSigDig<
     const N: i8,
@@ -193,6 +219,12 @@ impl<
         let digit = SigDig::from(value);
         let unit = UnitSystem::<N, M, L, T, THETA, I, J>::default();
         Self {digit, unit}
+    }
+}
+
+impl DimSigDig<0, 0, 3, 0, 0, 0, 0> {
+    pub fn from_milli_liter<U: Into<f64>>(v: U) -> Self {
+        Self::from(v.into())
     }
 }
 
@@ -296,8 +328,32 @@ where
     }
 }
 
+impl<
+    const N: i8,
+    const M: i8,
+    const L: i8,
+    const T: i8,
+    const THETA: i8,
+    const I: i8,
+    const J: i8,
+> std::cmp::PartialOrd for DimSigDig<N, M, L, T, THETA, I, J> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        use std::cmp::Ordering;
+        assert_eq!(self.unit.pow10coe, other.unit.pow10coe);
+        if self.digit < other.digit {
+            Some(Ordering::Less)
+        } else if self.digit == other.digit {
+            Some(Ordering::Equal)
+        } else if self.digit > other.digit {
+            Some(Ordering::Greater)
+        } else {
+            None
+        }
+    }
+}
+
 pub type BasicDimSigDig<const N: i8, const M: i8, const L: i8> = DimSigDig<N, M, L, 0, 0, 0, 0>;
 
 pub type Mol = BasicDimSigDig<1, 0, 0>;
-pub type Gram = BasicDimSigDig<0, 1, 0>;
-pub type Meter = BasicDimSigDig<0, 0, 1>;
+pub type Mass = BasicDimSigDig<0, 1, 0>;
+pub type Volume = BasicDimSigDig<0, 0, 3>;
