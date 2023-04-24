@@ -254,9 +254,41 @@ impl<
     const THETA: i8,
     const I: i8,
     const J: i8,
+> ops::Sub for DimSigDig<N, M, L, T, THETA, I, J> {
+    type Output = Self;
+    fn sub(self, rhs: Self) -> Self::Output {
+        Self {
+            digit: self.digit - rhs.digit,
+            unit: self.unit - self.unit,
+        }
+    }
+}
+
+impl<
+    const N: i8,
+    const M: i8,
+    const L: i8,
+    const T: i8,
+    const THETA: i8,
+    const I: i8,
+    const J: i8,
 > ops::AddAssign for DimSigDig<N, M, L, T, THETA, I, J> {
     fn add_assign(&mut self, rhs: Self) {
         *self = *self + rhs;
+    }
+}
+
+impl<
+    const N: i8,
+    const M: i8,
+    const L: i8,
+    const T: i8,
+    const THETA: i8,
+    const I: i8,
+    const J: i8,
+> ops::SubAssign for DimSigDig<N, M, L, T, THETA, I, J> {
+    fn sub_assign(&mut self, rhs: Self) {
+        *self = *self - rhs;
     }
 }
 
@@ -357,3 +389,4 @@ pub type BasicDimSigDig<const N: i8, const M: i8, const L: i8> = DimSigDig<N, M,
 pub type Mol = BasicDimSigDig<1, 0, 0>;
 pub type Mass = BasicDimSigDig<0, 1, 0>;
 pub type Volume = BasicDimSigDig<0, 0, 3>;
+pub type NoDim = BasicDimSigDig<0, 0, 0>;
