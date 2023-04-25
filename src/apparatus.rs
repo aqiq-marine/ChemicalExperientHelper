@@ -1,41 +1,65 @@
 use crate::unit_system::*;
 use crate::substance::*;
+
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
-struct VolumetricFlask<const V: usize> {
-    solution: MixtureLiquid,
+pub struct VolumetricFlask<const V: usize> {
+    solution: Solution,
 }
 
 impl<const V: usize> VolumetricFlask<V> {
-    fn add_solid(self, s: PureSolid) -> Self {
-        self.add_pure_liquid(s.into_liquid(0.0.into()))
+    pub fn new() -> Self {
+        Self {
+            solution: Solution::new()
+        }
     }
-    fn add_pure_liquid(self, l: PureLiquid) -> Self {
-        self.solution.add_pure_liquid(l);
-        assert!(self.solution.get_volume() <= (V as f64).into());
+    pub fn get_concentration(&self) -> HashMap<String, BasicDimSigDig<1, 0, -3>> {
+        self.solution.get_concentration()
+    }
+    pub fn add_solution(mut self, l: Solution) -> Self {
+        self.solution.add_solution(l);
+        assert!(self.solution.get_volume() <= DimSigDig::milli_liter_from_usize(V));
         self
     }
-    fn add_mixture(self, l: MixtureLiquid) -> Self {
-        self.solution.add_mixture_liquid(l);
-        assert!(self.solution.get_volume() <= (V as f64).into());
+    pub fn add_substance(mut self, s: Substance) -> Self {
+        self.solution.add_substance(s);
+        assert!(self.solution.get_volume() <= DimSigDig::milli_liter_from_usize(V));
         self
     }
-    fn fillup(self) -> Self {
-        self.solution.to_be_certain_volume((V as f64).into());
+    pub fn fillup(mut self) -> Self {
+        self.solution.to_be_certain_volume(DimSigDig::milli_liter_from_usize(V));
         self
     }
-    fn into_pipette<const U: usize>(&mut self, pipette: Pipette<U>) -> Pipette<U> {
-        pipette
+    pub fn into_pipette<const U: usize>(&mut self, pipette: Pipette<U>) -> Pipette<U> {
+        let v = DimSigDig::milli_liter_from_usize(U);
+        assert!(v < self.solution.get_volume());
+        let s = self.solution.dispense(v);
+        pipette.aspirate_solution(s)
     }
 }
 
-struct Pipette<const V: usize> {
-    solution: MixtureLiquid,
+pub struct Pipette<const V: usize> {
+    solution: Option<Solution>,
 }
 
 impl<const V: usize> Pipette<V> {
-    fn into_flask<const U: usize>(self, flask: VolumetricFlask<U>) -> VolumetricFlask<U> {
-        flask.add_mixture(self.solution)
+    pub fn new() -> Self {
+        Self {solution: None}
+    }
+    fn aspirate_solution(self, mut s: Solution) -> Self {
+        s.to_be_certain_volume((V as f64).into());
+        Self {
+            solution: Some(s),
+        }
+    }
+    pub fn into_flask<const U: usize>(&mut self, flask: VolumetricFlask<U>) -> VolumetricFlask<U> {
+        if let Some(s) = self.solution.take() {
+            self.solution = None;
+            flask.add_solution(s)
+        } else {
+            println!("you are trying to use empty pipette");
+            flask
+        }
     }
 }

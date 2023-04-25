@@ -32,6 +32,9 @@ impl<
     fn milli() -> Self {
         Self {pow10coe: -3}
     }
+    fn from_coe(coe: i8) -> Self {
+        Self {pow10coe: coe}
+    }
 }
 
 impl<
@@ -206,6 +209,14 @@ pub struct DimSigDig<
     unit: UnitSystem<N, M, L, T, THETA, I, J>,
 }
 
+impl DimSigDig<0, 0, 3, 0, 0, 0, 0> {
+    pub fn milli_liter_from_usize(v: usize) -> Self {
+        let digit = SigDig::from(v as f64);
+        let unit = UnitSystem { pow10coe: -6};
+        Self {digit, unit}
+    }
+}
+
 impl<
     const N: i8,
     const M: i8,
@@ -239,9 +250,12 @@ impl<
 > ops::Add for DimSigDig<N, M, L, T, THETA, I, J> {
     type Output = Self;
     fn add(self, rhs: Self) -> Self::Output {
+        let coe = self.unit.pow10coe.max(rhs.unit.pow10coe);
+        let coe1: SigDig = 10_f64.powi((self.unit.pow10coe - coe) as i32).into();
+        let coe2: SigDig = 10_f64.powi((rhs.unit.pow10coe - coe) as i32).into();
         Self {
-            digit: self.digit + rhs.digit,
-            unit: self.unit + self.unit,
+            digit: coe1 * self.digit + coe2 * rhs.digit,
+            unit: UnitSystem::from_coe(coe),
         }
     }
 }
@@ -257,9 +271,12 @@ impl<
 > ops::Sub for DimSigDig<N, M, L, T, THETA, I, J> {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self::Output {
+        let coe = self.unit.pow10coe.max(rhs.unit.pow10coe);
+        let coe1: SigDig = 10_f64.powi((self.unit.pow10coe - coe) as i32).into();
+        let coe2: SigDig = 10_f64.powi((rhs.unit.pow10coe - coe) as i32).into();
         Self {
-            digit: self.digit - rhs.digit,
-            unit: self.unit - self.unit,
+            digit: coe1 * self.digit - coe2 * rhs.digit,
+            unit: UnitSystem::from_coe(coe),
         }
     }
 }
@@ -371,12 +388,13 @@ impl<
 > std::cmp::PartialOrd for DimSigDig<N, M, L, T, THETA, I, J> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         use std::cmp::Ordering;
-        assert_eq!(self.unit.pow10coe, other.unit.pow10coe);
-        if self.digit < other.digit {
+        let digit1 = self.digit * 10.0_f64.powi(self.unit.pow10coe as i32).into();
+        let digit2 = other.digit * 10.0_f64.powi(other.unit.pow10coe as i32).into();
+        if digit1 < digit2 {
             Some(Ordering::Less)
-        } else if self.digit == other.digit {
+        } else if digit1 == digit2 {
             Some(Ordering::Equal)
-        } else if self.digit > other.digit {
+        } else if digit1 > digit2 {
             Some(Ordering::Greater)
         } else {
             None
