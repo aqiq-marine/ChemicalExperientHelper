@@ -1,7 +1,7 @@
 use std::ops;
 
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Default, PartialEq, Eq)]
 struct UnitSystem<
     const N: i8,
     const M: i8,
@@ -34,6 +34,35 @@ impl<
     }
     fn from_coe(coe: i8) -> Self {
         Self {pow10coe: coe}
+    }
+}
+
+impl<
+    const N: i8,
+    const M: i8,
+    const L: i8,
+    const T: i8,
+    const THETA: i8,
+    const I: i8,
+    const J: i8,
+> std::fmt::Debug for UnitSystem<N, M, L, T, THETA, I, J> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let maybe_unit = |unit: &str, d: i8| -> String {
+            match d {
+                0 => "".to_string(),
+                1 => format!("{} ", unit),
+                _ => format!("{}^{} ", unit, d),
+            }
+        };
+        let result = maybe_unit("10", self.pow10coe)
+            + maybe_unit("mol", N).as_str()
+            + maybe_unit("g", M).as_str()
+            + maybe_unit("m", L).as_str()
+            + maybe_unit("s", T).as_str()
+            + maybe_unit("K", THETA).as_str()
+            + maybe_unit("A", I).as_str()
+            + maybe_unit("cd", J).as_str();
+        write!(f, "{}", result)
     }
 }
 
@@ -140,6 +169,12 @@ struct SigDig {
     digit: f64,
 }
 
+impl std::fmt::Display for SigDig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.digit)
+    }
+}
+
 impl From<f64> for SigDig {
     fn from(value: f64) -> Self {
         Self {
@@ -195,7 +230,7 @@ impl std::cmp::PartialOrd for SigDig {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 pub struct DimSigDig<
     const N: i8,
     const M: i8,
@@ -207,14 +242,6 @@ pub struct DimSigDig<
 > {
     digit: SigDig,
     unit: UnitSystem<N, M, L, T, THETA, I, J>,
-}
-
-impl DimSigDig<0, 0, 3, 0, 0, 0, 0> {
-    pub fn milli_liter_from_usize(v: usize) -> Self {
-        let digit = SigDig::from(v as f64);
-        let unit = UnitSystem { pow10coe: -6};
-        Self {digit, unit}
-    }
 }
 
 impl<
@@ -233,8 +260,22 @@ impl<
     }
 }
 
+impl<
+    const N: i8,
+    const M: i8,
+    const L: i8,
+    const T: i8,
+    const THETA: i8,
+    const I: i8,
+    const J: i8,
+> std::fmt::Debug for DimSigDig<N, M, L, T, THETA, I, J> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} [{:?}]", self.digit, self.unit)
+    }
+}
+
 impl DimSigDig<0, 0, 3, 0, 0, 0, 0> {
-    pub fn from_milli_liter<U: Into<f64>>(v: U) -> Self {
+    pub fn milli_liter_from<U: Into<f64>>(v: U) -> Self {
         Self::from(v.into())
     }
 }

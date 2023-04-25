@@ -17,7 +17,7 @@ fn main() {
                 "EDTA".to_string(),
                 391.0.into(),
                 1.0.into(),
-                Volume::milli_liter_from_usize(1)
+                Volume::milli_liter_from::<u32>(1)
             )
         ).fillup();
     let mut sub_flask = VolumetricFlask::<50>::new();

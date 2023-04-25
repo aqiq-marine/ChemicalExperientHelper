@@ -19,21 +19,22 @@ impl<const V: usize> VolumetricFlask<V> {
     }
     pub fn add_solution(mut self, l: Solution) -> Self {
         self.solution.add_solution(l);
-        assert!(self.solution.get_volume() <= DimSigDig::milli_liter_from_usize(V));
+        assert!(self.solution.get_volume() <= DimSigDig::milli_liter_from::<u32>(V as u32));
         self
     }
     pub fn add_substance(mut self, s: Substance) -> Self {
         self.solution.add_substance(s);
-        assert!(self.solution.get_volume() <= DimSigDig::milli_liter_from_usize(V));
+        assert!(self.solution.get_volume() <= DimSigDig::milli_liter_from::<u32>(V as u32));
         self
     }
     pub fn fillup(mut self) -> Self {
-        self.solution.to_be_certain_volume(DimSigDig::milli_liter_from_usize(V));
+        self.solution.to_be_certain_volume(DimSigDig::milli_liter_from::<u32>(V as u32));
         self
     }
     pub fn into_pipette<const U: usize>(&mut self, pipette: Pipette<U>) -> Pipette<U> {
-        let v = DimSigDig::milli_liter_from_usize(U);
+        let v = DimSigDig::milli_liter_from::<u32>(U as u32);
         assert!(v < self.solution.get_volume());
+        // ここで正確にはかりとりたい
         let s = self.solution.dispense(v);
         pipette.aspirate_solution(s)
     }
@@ -48,7 +49,6 @@ impl<const V: usize> Pipette<V> {
         Self {solution: None}
     }
     fn aspirate_solution(self, mut s: Solution) -> Self {
-        s.to_be_certain_volume((V as f64).into());
         Self {
             solution: Some(s),
         }
