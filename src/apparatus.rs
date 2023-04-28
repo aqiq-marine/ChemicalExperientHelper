@@ -8,6 +8,48 @@ trait HasVolume {
 }
 
 #[derive(Debug, Clone)]
+pub struct Beaker<const V: usize> {
+    solution: Solution,
+}
+impl<const V: usize> HasVolume for Beaker<V> {
+    fn get_volume() -> Volume {
+        DimSigDig::milli_liter_from(V as u32)
+    }
+}
+
+impl<const V: usize> Beaker<V> {
+    pub fn new() -> Self {
+        Self {
+            solution: Solution::new(),
+        }
+    }
+    pub fn add_solution(mut self, l: Solution) -> Self {
+        self.solution.add_solution(l);
+        assert!(self.solution.get_volume() <= Self::get_volume());
+        self
+    }
+    pub fn add_substance(mut self, s: Substance) -> Self {
+        self.solution.add_substance(s);
+        assert!(self.solution.get_volume() <= Self::get_volume());
+        self
+    }
+    pub fn fillup_up_to(mut self, v: Volume) -> Self {
+        assert!(self.solution.get_volume() < v);
+        assert!(v < Self::get_volume());
+        self.solution.to_be(v);
+        self
+    }
+    pub fn into_volumetric_flask<const U: usize>(
+        &mut self,
+        mut flask: VolumetricFlask<U>
+    ) -> VolumetricFlask<U> {
+        let v = self.solution.get_volume();
+        assert!(v < VolumetricFlask::<U>::get_volume());
+        flask.add_solution(self.solution.dispense(v))
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct VolumetricFlask<const V: usize> {
     solution: Solution,
 }
@@ -32,21 +74,20 @@ impl<const V: usize> VolumetricFlask<V> {
         assert!(self.solution.get_volume() <= Self::get_volume());
         self
     }
-    pub fn add_substance(mut self, s: Substance) -> Self {
-        self.solution.add_substance(s);
-        assert!(self.solution.get_volume() <= Self::get_volume());
-        self
-    }
     pub fn fillup(mut self) -> Self {
         self.solution.to_be_certain_volume(Self::get_volume());
         self
     }
-    pub fn into_pipette<const U: usize>(&mut self, pipette: Pipette<U>) -> Pipette<U> {
+    pub fn into_pipette_mut<const U: usize>(&mut self, pipette: &mut Pipette<U>) {
         let v = Pipette::<U>::get_volume();
         assert!(v < self.solution.get_volume());
         // ここで正確にはかりとりたい
         let s = self.solution.dispense(v);
-        pipette.aspirate_solution(s)
+        pipette.aspirate_solution(s);
+    }
+    pub fn into_pipette<const U: usize>(&mut self, mut pipette: Pipette<U>) -> Pipette<U> {
+        self.into_pipette_mut(&mut pipette);
+        pipette
     }
 }
 
@@ -64,18 +105,20 @@ impl<const V: usize> Pipette<V> {
     pub fn new() -> Self {
         Self {solution: None}
     }
-    fn aspirate_solution(self, mut s: Solution) -> Self {
-        Self {
-            solution: Some(s),
-        }
+    fn aspirate_solution(&mut self, mut s: Solution) {
+        assert!(self.solution.is_none());
+        self.solution = Some(s);
     }
-    pub fn into_flask<const U: usize>(&mut self, flask: VolumetricFlask<U>) -> VolumetricFlask<U> {
+    pub fn into_flask_mut<const U: usize>(&mut self, flask: &mut VolumetricFlask<U>) {
         if let Some(s) = self.solution.take() {
             self.solution = None;
-            flask.add_solution(s)
+            *flask = flask.clone().add_solution(s);
         } else {
-            println!("you are trying to use empty pipette");
-            flask
+            panic!("you are trying to use empty pipette");
         }
+    }
+    pub fn into_flask<const U: usize>(&mut self, mut flask: VolumetricFlask<U>) -> VolumetricFlask<U> {
+        self.into_flask_mut(&mut flask);
+        flask
     }
 }

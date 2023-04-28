@@ -74,20 +74,26 @@ impl Solution {
                 .add_same_substance(solute);
         }
     }
-    pub fn to_be_certain_volume(&mut self, v: BasicDimSigDig<0, 0, 3>) {
+    pub fn to_be_certain_volume(&mut self, v: Volume) {
         assert!(self.volume <= v);
         self.volume = v;
     }
-    pub fn dispense(&mut self, v: BasicDimSigDig<0, 0, 3>) -> Solution {
+    pub fn to_be(&mut self, v: Volume) {
+        assert!(self.volume <= v);
+        self.volume = v;
+    }
+    pub fn dispense(&mut self, v: Volume) -> Solution {
         let ratio = v / self.volume;
-        let mut solution = self.clone();
+        let solution = {
+            let mut solution = self.clone();
 
-        solution.solute.iter_mut().map(|(_, s)| {
-            s.mass = s.mass * ratio;
-            s.volume = s.volume * ratio;
-        });
-        solution.volume = v;
-
+            solution.solute.iter_mut().for_each(|(_, s)| {
+                s.mass = s.mass * ratio;
+                s.volume = s.volume * ratio;
+            });
+            solution.volume = v;
+            solution
+        };
         self.solute.iter_mut().map(|(_, s)| {
             let one: NoDim = 1.0.into();
             let r = one - ratio;

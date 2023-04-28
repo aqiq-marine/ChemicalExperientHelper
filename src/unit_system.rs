@@ -70,6 +70,24 @@ impl<
         self.prefix[2] = prefix;
         self
     }
+    fn convert_with_prefix(&self, prefix: [SIPrefix; 7]) -> Self {
+        let mut pow10coe = 0;
+        for ((p1, p2), d) in self.prefix.iter()
+            .zip(prefix.iter())
+            .zip(Self::get_degree_array())
+        {
+            pow10coe += (p1.get_degree() - p2.get_degree()) * d;
+        }
+        Self {
+            pow10coe,
+            prefix,
+        }
+    }
+    fn convert_meter_prefix(&self, meter_prefix: SIPrefix) -> Self {
+        let mut prefix = self.prefix;
+        prefix[2] = meter_prefix;
+        self.convert_with_prefix(prefix)
+    }
     fn into_no_prefix(&self) -> Self {
         let degree = Self::get_degree_array();
         let mut pow10coe = self.pow10coe;
@@ -413,6 +431,17 @@ impl<
             unit,
         }
     }
+    pub fn normalized(&self) -> Self {
+        let mut result = self.clone();
+        if result.digit.digit == 0.0 {
+            return result;
+        }
+        let d = result.digit.digit.abs().log10().floor() as i32;
+        result.digit.digit *= 10_f64.powi(-d);
+        assert!(d.abs() <= std::i8::MAX as i32);
+        result.unit.pow10coe += d as i8;
+        result
+    }
 }
 impl<
         const N: i8,
@@ -442,7 +471,8 @@ impl<
     > std::fmt::Debug for DimSigDig<N, M, L, T, THETA, I, J>
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} [{:?}]", self.digit, self.unit)
+        let this = self.normalized();
+        write!(f, "{} [{:?}]", this.digit, this.unit)
     }
 }
 
@@ -451,6 +481,28 @@ impl DimSigDig<0, 0, 3, 0, 0, 0, 0> {
         let digit = SigDig::from(v.into());
         let unit = UnitSystem::default().meter_prefix(SIPrefix::Centi);
         Self { digit, unit }
+    }
+    pub fn convert_to_milli_liter(self) -> Self {
+        Self {
+            digit: self.digit,
+            unit: self.unit.convert_meter_prefix(SIPrefix::Centi),
+        }
+    }
+    pub fn convert_to_liter(self) -> Self {
+        Self {
+            digit: self.digit,
+            unit: self.unit.convert_meter_prefix(SIPrefix::Deci),
+        }
+    }
+}
+
+impl DimSigDig<1, 0, -3, 0, 0, 0, 0> {
+    pub fn convert_to_molar(self) -> Self {
+        Self {
+            digit: self.digit,
+            unit: self.unit
+                .convert_meter_prefix(SIPrefix::Deci),
+        }
     }
 }
 
