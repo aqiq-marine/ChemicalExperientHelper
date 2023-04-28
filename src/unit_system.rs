@@ -22,12 +22,16 @@ impl SIPrefix {
 
 impl std::fmt::Display for SIPrefix {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", match self {
-            Self::NoPrefix => "",
-            Self::Deci => "d",
-            Self::Centi => "c",
-            Self::Milli => "m",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::NoPrefix => "",
+                Self::Deci => "d",
+                Self::Centi => "c",
+                Self::Milli => "m",
+            }
+        )
     }
 }
 
@@ -46,14 +50,15 @@ struct UnitSystem<
 }
 
 impl<
-    const N: i8,
-    const M: i8,
-    const L: i8,
-    const T: i8,
-    const THETA: i8,
-    const I: i8,
-    const J: i8,
-> UnitSystem<N, M, L, T, THETA, I, J> {
+        const N: i8,
+        const M: i8,
+        const L: i8,
+        const T: i8,
+        const THETA: i8,
+        const I: i8,
+        const J: i8,
+    > UnitSystem<N, M, L, T, THETA, I, J>
+{
     fn get_degree_array() -> [i8; 7] {
         [N, M, L, T, THETA, I, J]
     }
@@ -79,15 +84,14 @@ impl<
 }
 
 impl<
-    const N1: i8,
-    const M1: i8,
-    const L1: i8,
-    const T1: i8,
-    const THETA1: i8,
-    const I1: i8,
-    const J1: i8,
-> UnitSystem<N1, M1, L1, T1, THETA1, I1, J1>
-where
+        const N1: i8,
+        const M1: i8,
+        const L1: i8,
+        const T1: i8,
+        const THETA1: i8,
+        const I1: i8,
+        const J1: i8,
+    > UnitSystem<N1, M1, L1, T1, THETA1, I1, J1>
 {
     pub fn into_same_prefix_with<
         const N2: i8,
@@ -97,16 +101,30 @@ where
         const THETA2: i8,
         const I2: i8,
         const J2: i8,
-    >(&self, other: &UnitSystem<N2, M2, L2, T2, THETA2, I2, J2>) -> Self {
+    >(
+        &self,
+        other: &UnitSystem<N2, M2, L2, T2, THETA2, I2, J2>,
+    ) -> Self {
         // prefixをotherに合わせる
         let mut pow10coe = 0;
-        let degree = Self::get_degree_array();
-        for ((p1, p2), d) in self.prefix.iter().zip(other.prefix.iter()).zip(degree) {
-            pow10coe += (p1.get_degree() - p2.get_degree()) * d;
+        let mut prefix = other.prefix.clone();
+        let degree1 = Self::get_degree_array();
+        let degree2 = [N2, M2, L2, T2, THETA2, I2, J2];
+        for ((p1, p2), (d1, d2)) in self
+            .prefix
+            .iter()
+            .zip(prefix.iter_mut())
+            .zip(degree1.iter().zip(degree2.iter()))
+        {
+            if *d2 != 0 {
+                pow10coe += (p1.get_degree() - p2.get_degree()) * d1;
+            } else {
+                *p2 = *p1;
+            }
         }
         Self {
             pow10coe,
-            prefix: other.prefix,
+            prefix,
         }
     }
     pub fn take_red_pow10coe<
@@ -117,7 +135,10 @@ where
         const THETA2: i8,
         const I2: i8,
         const J2: i8,
-    >(&mut self, other: &UnitSystem<N2, M2, L2, T2, THETA2, I2, J2>) -> i8 {
+    >(
+        &mut self,
+        other: &UnitSystem<N2, M2, L2, T2, THETA2, I2, J2>,
+    ) -> i8 {
         let red = self.pow10coe - other.pow10coe;
         self.pow10coe = other.pow10coe;
         red
@@ -125,14 +146,15 @@ where
 }
 
 impl<
-    const N: i8,
-    const M: i8,
-    const L: i8,
-    const T: i8,
-    const THETA: i8,
-    const I: i8,
-    const J: i8,
-> std::fmt::Debug for UnitSystem<N, M, L, T, THETA, I, J> {
+        const N: i8,
+        const M: i8,
+        const L: i8,
+        const T: i8,
+        const THETA: i8,
+        const I: i8,
+        const J: i8,
+    > std::fmt::Debug for UnitSystem<N, M, L, T, THETA, I, J>
+{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let maybe_unit = |prefix: &SIPrefix, unit: &str, d: i8| -> String {
             match d {
@@ -141,26 +163,30 @@ impl<
                 _ => format!("{}{}^{} ", prefix, unit, d),
             }
         };
-        let result = self.prefix.iter()
+        let result = self
+            .prefix
+            .iter()
             .zip([N, M, L, T, THETA, I, J])
             .zip(["mol", "g", "m", "s", "K", "A", "cd"])
             .map(|((p, d), name)| maybe_unit(p, name, d))
             .collect::<Vec<_>>()
             .concat();
-        let result = maybe_unit(&SIPrefix::NoPrefix, "10", self.pow10coe) + result.as_str();
+        let mut result = maybe_unit(&SIPrefix::NoPrefix, "10", self.pow10coe) + result.as_str();
+        result.pop();
         write!(f, "{}", result)
     }
 }
 
 impl<
-    const N: i8,
-    const M: i8,
-    const L: i8,
-    const T: i8,
-    const THETA: i8,
-    const I: i8,
-    const J: i8,
-> ops::Add for UnitSystem<N, M, L, T, THETA, I, J> {
+        const N: i8,
+        const M: i8,
+        const L: i8,
+        const T: i8,
+        const THETA: i8,
+        const I: i8,
+        const J: i8,
+    > ops::Add for UnitSystem<N, M, L, T, THETA, I, J>
+{
     type Output = Self;
     fn add(self, rhs: Self) -> Self::Output {
         let rhs = rhs.into_same_prefix_with(&self);
@@ -170,14 +196,15 @@ impl<
 }
 
 impl<
-    const N: i8,
-    const M: i8,
-    const L: i8,
-    const T: i8,
-    const THETA: i8,
-    const I: i8,
-    const J: i8,
-> ops::Sub for UnitSystem<N, M, L, T, THETA, I, J> {
+        const N: i8,
+        const M: i8,
+        const L: i8,
+        const T: i8,
+        const THETA: i8,
+        const I: i8,
+        const J: i8,
+    > ops::Sub for UnitSystem<N, M, L, T, THETA, I, J>
+{
     type Output = Self;
     fn sub(self, rhs: Self) -> Self::Output {
         // 単位レベルでは足し算と同じ
@@ -186,21 +213,22 @@ impl<
 }
 
 impl<
-    const N1: i8,
-    const M1: i8,
-    const L1: i8,
-    const T1: i8,
-    const THETA1: i8,
-    const I1: i8,
-    const J1: i8,
-    const N2: i8,
-    const M2: i8,
-    const L2: i8,
-    const T2: i8,
-    const THETA2: i8,
-    const I2: i8,
-    const J2: i8,
-> ops::Mul<UnitSystem<N2, M2, L2, T2, THETA2, I2, J2>> for UnitSystem<N1, M1, L1, T1, THETA1, I1, J1>
+        const N1: i8,
+        const M1: i8,
+        const L1: i8,
+        const T1: i8,
+        const THETA1: i8,
+        const I1: i8,
+        const J1: i8,
+        const N2: i8,
+        const M2: i8,
+        const L2: i8,
+        const T2: i8,
+        const THETA2: i8,
+        const I2: i8,
+        const J2: i8,
+    > ops::Mul<UnitSystem<N2, M2, L2, T2, THETA2, I2, J2>>
+    for UnitSystem<N1, M1, L1, T1, THETA1, I1, J1>
 where
     [(); (N1 + N2) as usize]: Sized,
     [(); (M1 + M2) as usize]: Sized,
@@ -210,33 +238,42 @@ where
     [(); (I1 + I2) as usize]: Sized,
     [(); (J1 + J2) as usize]: Sized,
 {
-    type Output = UnitSystem<{N1+N2}, {M1+M2}, {L1+L2}, {T1+T2}, {THETA1+THETA2}, {I1+I2}, {J1+J2}>;
+    type Output = UnitSystem<
+        { N1 + N2 },
+        { M1 + M2 },
+        { L1 + L2 },
+        { T1 + T2 },
+        { THETA1 + THETA2 },
+        { I1 + I2 },
+        { J1 + J2 },
+    >;
     fn mul(self, rhs: UnitSystem<N2, M2, L2, T2, THETA2, I2, J2>) -> Self::Output {
         let mut pow10coe = 0;
         let rhs = rhs.into_same_prefix_with(&self);
         Self::Output {
             pow10coe: self.pow10coe + rhs.pow10coe,
-            prefix: self.prefix,
+            prefix: rhs.prefix,
         }
     }
 }
 
 impl<
-    const N1: i8,
-    const M1: i8,
-    const L1: i8,
-    const T1: i8,
-    const THETA1: i8,
-    const I1: i8,
-    const J1: i8,
-    const N2: i8,
-    const M2: i8,
-    const L2: i8,
-    const T2: i8,
-    const THETA2: i8,
-    const I2: i8,
-    const J2: i8,
-> ops::Div<UnitSystem<N2, M2, L2, T2, THETA2, I2, J2>> for UnitSystem<N1, M1, L1, T1, THETA1, I1, J1>
+        const N1: i8,
+        const M1: i8,
+        const L1: i8,
+        const T1: i8,
+        const THETA1: i8,
+        const I1: i8,
+        const J1: i8,
+        const N2: i8,
+        const M2: i8,
+        const L2: i8,
+        const T2: i8,
+        const THETA2: i8,
+        const I2: i8,
+        const J2: i8,
+    > ops::Div<UnitSystem<N2, M2, L2, T2, THETA2, I2, J2>>
+    for UnitSystem<N1, M1, L1, T1, THETA1, I1, J1>
 where
     [(); (N1 - N2) as usize]: Sized,
     [(); (M1 - M2) as usize]: Sized,
@@ -246,18 +283,25 @@ where
     [(); (I1 - I2) as usize]: Sized,
     [(); (J1 - J2) as usize]: Sized,
 {
-    type Output = UnitSystem<{N1-N2}, {M1-M2}, {L1-L2}, {T1-T2}, {THETA1-THETA2}, {I1-I2}, {J1-J2}>;
+    type Output = UnitSystem<
+        { N1 - N2 },
+        { M1 - M2 },
+        { L1 - L2 },
+        { T1 - T2 },
+        { THETA1 - THETA2 },
+        { I1 - I2 },
+        { J1 - J2 },
+    >;
     fn div(self, rhs: UnitSystem<N2, M2, L2, T2, THETA2, I2, J2>) -> Self::Output {
         let rhs = rhs.into_same_prefix_with(&self);
         Self::Output {
             pow10coe: self.pow10coe - rhs.pow10coe,
-            prefix: self.prefix,
+            prefix: rhs.prefix,
         }
     }
 }
 
 type BasicUnit<const N: i8, const M: i8, const L: i8> = UnitSystem<N, M, L, 0, 0, 0, 0>;
-
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 struct SigDig {
@@ -341,14 +385,15 @@ pub struct DimSigDig<
 }
 
 impl<
-    const N1: i8,
-    const M1: i8,
-    const L1: i8,
-    const T1: i8,
-    const THETA1: i8,
-    const I1: i8,
-    const J1: i8,
-> DimSigDig<N1, M1, L1, T1, THETA1, I1, J1> {
+        const N1: i8,
+        const M1: i8,
+        const L1: i8,
+        const T1: i8,
+        const THETA1: i8,
+        const I1: i8,
+        const J1: i8,
+    > DimSigDig<N1, M1, L1, T1, THETA1, I1, J1>
+{
     pub fn into_same_unit_with<
         const N2: i8,
         const M2: i8,
@@ -357,7 +402,10 @@ impl<
         const THETA2: i8,
         const I2: i8,
         const J2: i8,
-    >(&self, other: &DimSigDig<N2, M2, L2, T2, THETA2, I2, J2>) -> Self {
+    >(
+        &self,
+        other: &DimSigDig<N2, M2, L2, T2, THETA2, I2, J2>,
+    ) -> Self {
         let mut unit = self.unit.into_same_prefix_with(&other.unit);
         let red = unit.take_red_pow10coe(&other.unit);
         Self {
@@ -367,30 +415,32 @@ impl<
     }
 }
 impl<
-    const N: i8,
-    const M: i8,
-    const L: i8,
-    const T: i8,
-    const THETA: i8,
-    const I: i8,
-    const J: i8,
-> From<f64> for DimSigDig<N, M, L, T, THETA, I, J> {
+        const N: i8,
+        const M: i8,
+        const L: i8,
+        const T: i8,
+        const THETA: i8,
+        const I: i8,
+        const J: i8,
+    > From<f64> for DimSigDig<N, M, L, T, THETA, I, J>
+{
     fn from(value: f64) -> Self {
         let digit = SigDig::from(value);
         let unit = UnitSystem::default();
-        Self {digit, unit}
+        Self { digit, unit }
     }
 }
 
 impl<
-    const N: i8,
-    const M: i8,
-    const L: i8,
-    const T: i8,
-    const THETA: i8,
-    const I: i8,
-    const J: i8,
-> std::fmt::Debug for DimSigDig<N, M, L, T, THETA, I, J> {
+        const N: i8,
+        const M: i8,
+        const L: i8,
+        const T: i8,
+        const THETA: i8,
+        const I: i8,
+        const J: i8,
+    > std::fmt::Debug for DimSigDig<N, M, L, T, THETA, I, J>
+{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} [{:?}]", self.digit, self.unit)
     }
@@ -399,21 +449,21 @@ impl<
 impl DimSigDig<0, 0, 3, 0, 0, 0, 0> {
     pub fn milli_liter_from<U: Into<f64>>(v: U) -> Self {
         let digit = SigDig::from(v.into());
-        let unit = UnitSystem::default()
-            .meter_prefix(SIPrefix::Centi);
-        Self {digit, unit}
+        let unit = UnitSystem::default().meter_prefix(SIPrefix::Centi);
+        Self { digit, unit }
     }
 }
 
 impl<
-    const N: i8,
-    const M: i8,
-    const L: i8,
-    const T: i8,
-    const THETA: i8,
-    const I: i8,
-    const J: i8,
-> ops::Add for DimSigDig<N, M, L, T, THETA, I, J> {
+        const N: i8,
+        const M: i8,
+        const L: i8,
+        const T: i8,
+        const THETA: i8,
+        const I: i8,
+        const J: i8,
+    > ops::Add for DimSigDig<N, M, L, T, THETA, I, J>
+{
     type Output = Self;
     fn add(self, rhs: Self) -> Self::Output {
         if self.digit == 0.0.into() {
@@ -433,14 +483,15 @@ impl<
 }
 
 impl<
-    const N: i8,
-    const M: i8,
-    const L: i8,
-    const T: i8,
-    const THETA: i8,
-    const I: i8,
-    const J: i8,
-> ops::Sub for DimSigDig<N, M, L, T, THETA, I, J> {
+        const N: i8,
+        const M: i8,
+        const L: i8,
+        const T: i8,
+        const THETA: i8,
+        const I: i8,
+        const J: i8,
+    > ops::Sub for DimSigDig<N, M, L, T, THETA, I, J>
+{
     type Output = Self;
     fn sub(self, rhs: Self) -> Self::Output {
         if self.digit == 0.0.into() {
@@ -460,49 +511,52 @@ impl<
 }
 
 impl<
-    const N: i8,
-    const M: i8,
-    const L: i8,
-    const T: i8,
-    const THETA: i8,
-    const I: i8,
-    const J: i8,
-> ops::AddAssign for DimSigDig<N, M, L, T, THETA, I, J> {
+        const N: i8,
+        const M: i8,
+        const L: i8,
+        const T: i8,
+        const THETA: i8,
+        const I: i8,
+        const J: i8,
+    > ops::AddAssign for DimSigDig<N, M, L, T, THETA, I, J>
+{
     fn add_assign(&mut self, rhs: Self) {
         *self = *self + rhs;
     }
 }
 
 impl<
-    const N: i8,
-    const M: i8,
-    const L: i8,
-    const T: i8,
-    const THETA: i8,
-    const I: i8,
-    const J: i8,
-> ops::SubAssign for DimSigDig<N, M, L, T, THETA, I, J> {
+        const N: i8,
+        const M: i8,
+        const L: i8,
+        const T: i8,
+        const THETA: i8,
+        const I: i8,
+        const J: i8,
+    > ops::SubAssign for DimSigDig<N, M, L, T, THETA, I, J>
+{
     fn sub_assign(&mut self, rhs: Self) {
         *self = *self - rhs;
     }
 }
 
 impl<
-    const N1: i8,
-    const M1: i8,
-    const L1: i8,
-    const T1: i8,
-    const THETA1: i8,
-    const I1: i8,
-    const J1: i8,
-    const N2: i8,
-    const M2: i8,
-    const L2: i8,
-    const T2: i8,
-    const THETA2: i8,
-    const I2: i8,
-    const J2: i8,
-> ops::Mul<DimSigDig<N2, M2, L2, T2, THETA2, I2, J2>> for DimSigDig<N1, M1, L1, T1, THETA1, I1, J1>
+        const N1: i8,
+        const M1: i8,
+        const L1: i8,
+        const T1: i8,
+        const THETA1: i8,
+        const I1: i8,
+        const J1: i8,
+        const N2: i8,
+        const M2: i8,
+        const L2: i8,
+        const T2: i8,
+        const THETA2: i8,
+        const I2: i8,
+        const J2: i8,
+    > ops::Mul<DimSigDig<N2, M2, L2, T2, THETA2, I2, J2>>
+    for DimSigDig<N1, M1, L1, T1, THETA1, I1, J1>
 where
     [(); (N1 + N2) as usize]: Sized,
     [(); (M1 + M2) as usize]: Sized,
@@ -512,7 +566,15 @@ where
     [(); (I1 + I2) as usize]: Sized,
     [(); (J1 + J2) as usize]: Sized,
 {
-    type Output = DimSigDig<{N1+N2}, {M1+M2}, {L1+L2}, {T1+T2}, {THETA1+THETA2}, {I1+I2}, {J1+J2}>;
+    type Output = DimSigDig<
+        { N1 + N2 },
+        { M1 + M2 },
+        { L1 + L2 },
+        { T1 + T2 },
+        { THETA1 + THETA2 },
+        { I1 + I2 },
+        { J1 + J2 },
+    >;
     fn mul(self, rhs: DimSigDig<N2, M2, L2, T2, THETA2, I2, J2>) -> Self::Output {
         Self::Output {
             digit: self.digit * rhs.digit,
@@ -522,21 +584,22 @@ where
 }
 
 impl<
-    const N1: i8,
-    const M1: i8,
-    const L1: i8,
-    const T1: i8,
-    const THETA1: i8,
-    const I1: i8,
-    const J1: i8,
-    const N2: i8,
-    const M2: i8,
-    const L2: i8,
-    const T2: i8,
-    const THETA2: i8,
-    const I2: i8,
-    const J2: i8,
-> ops::Div<DimSigDig<N2, M2, L2, T2, THETA2, I2, J2>> for DimSigDig<N1, M1, L1, T1, THETA1, I1, J1>
+        const N1: i8,
+        const M1: i8,
+        const L1: i8,
+        const T1: i8,
+        const THETA1: i8,
+        const I1: i8,
+        const J1: i8,
+        const N2: i8,
+        const M2: i8,
+        const L2: i8,
+        const T2: i8,
+        const THETA2: i8,
+        const I2: i8,
+        const J2: i8,
+    > ops::Div<DimSigDig<N2, M2, L2, T2, THETA2, I2, J2>>
+    for DimSigDig<N1, M1, L1, T1, THETA1, I1, J1>
 where
     [(); (N1 - N2) as usize]: Sized,
     [(); (M1 - M2) as usize]: Sized,
@@ -546,7 +609,15 @@ where
     [(); (I1 - I2) as usize]: Sized,
     [(); (J1 - J2) as usize]: Sized,
 {
-    type Output = DimSigDig<{N1-N2}, {M1-M2}, {L1-L2}, {T1-T2}, {THETA1-THETA2}, {I1-I2}, {J1-J2}>;
+    type Output = DimSigDig<
+        { N1 - N2 },
+        { M1 - M2 },
+        { L1 - L2 },
+        { T1 - T2 },
+        { THETA1 - THETA2 },
+        { I1 - I2 },
+        { J1 - J2 },
+    >;
     fn div(self, rhs: DimSigDig<N2, M2, L2, T2, THETA2, I2, J2>) -> Self::Output {
         Self::Output {
             digit: self.digit / rhs.digit,
@@ -556,14 +627,15 @@ where
 }
 
 impl<
-    const N: i8,
-    const M: i8,
-    const L: i8,
-    const T: i8,
-    const THETA: i8,
-    const I: i8,
-    const J: i8,
-> std::cmp::PartialOrd for DimSigDig<N, M, L, T, THETA, I, J> {
+        const N: i8,
+        const M: i8,
+        const L: i8,
+        const T: i8,
+        const THETA: i8,
+        const I: i8,
+        const J: i8,
+    > std::cmp::PartialOrd for DimSigDig<N, M, L, T, THETA, I, J>
+{
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         use std::cmp::Ordering;
         let digit1 = self.digit * 10.0_f64.powi(self.unit.pow10coe as i32).into();
