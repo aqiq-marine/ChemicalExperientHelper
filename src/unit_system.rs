@@ -1,5 +1,35 @@
 use std::ops;
 
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+enum SIPrefix {
+    #[default]
+    NoPrefix,
+    Deci,
+    Centi,
+    Milli,
+}
+
+impl SIPrefix {
+    fn get_degree(&self) -> i8 {
+        match self {
+            Self::NoPrefix => 0,
+            Self::Deci => -1,
+            Self::Centi => -2,
+            Self::Milli => -3,
+        }
+    }
+}
+
+impl std::fmt::Display for SIPrefix {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", match self {
+            Self::NoPrefix => "",
+            Self::Deci => "d",
+            Self::Centi => "c",
+            Self::Milli => "m",
+        })
+    }
+}
 
 #[derive(Clone, Copy, Default, PartialEq, Eq)]
 struct UnitSystem<
@@ -12,6 +42,7 @@ struct UnitSystem<
     const J: i8,
 > {
     pow10coe: i8,
+    prefix: [SIPrefix; 7],
 }
 
 impl<
@@ -23,17 +54,73 @@ impl<
     const I: i8,
     const J: i8,
 > UnitSystem<N, M, L, T, THETA, I, J> {
-    fn milli_liter() -> UnitSystem<0, 0, 3, 0, 0, 0, 0> {
-        UnitSystem {pow10coe: -2 * 3}
+    fn get_degree_array() -> [i8; 7] {
+        [N, M, L, T, THETA, I, J]
     }
-    fn centi() -> Self {
-        Self {pow10coe: -2}
+    fn gram_prefix(mut self, prefix: SIPrefix) -> Self {
+        self.prefix[1] = prefix;
+        self
     }
-    fn milli() -> Self {
-        Self {pow10coe: -3}
+    fn meter_prefix(mut self, prefix: SIPrefix) -> Self {
+        self.prefix[2] = prefix;
+        self
     }
-    fn from_coe(coe: i8) -> Self {
-        Self {pow10coe: coe}
+    fn into_no_prefix(&self) -> Self {
+        let degree = Self::get_degree_array();
+        let mut pow10coe = self.pow10coe;
+        for (p, d) in self.prefix.iter().zip(degree) {
+            pow10coe += p.get_degree() * d;
+        }
+        Self {
+            pow10coe,
+            prefix: [SIPrefix::NoPrefix; 7],
+        }
+    }
+}
+
+impl<
+    const N1: i8,
+    const M1: i8,
+    const L1: i8,
+    const T1: i8,
+    const THETA1: i8,
+    const I1: i8,
+    const J1: i8,
+> UnitSystem<N1, M1, L1, T1, THETA1, I1, J1>
+where
+{
+    pub fn into_same_prefix_with<
+        const N2: i8,
+        const M2: i8,
+        const L2: i8,
+        const T2: i8,
+        const THETA2: i8,
+        const I2: i8,
+        const J2: i8,
+    >(&self, other: &UnitSystem<N2, M2, L2, T2, THETA2, I2, J2>) -> Self {
+        // prefixをotherに合わせる
+        let mut pow10coe = 0;
+        let degree = Self::get_degree_array();
+        for ((p1, p2), d) in self.prefix.iter().zip(other.prefix.iter()).zip(degree) {
+            pow10coe += (p1.get_degree() - p2.get_degree()) * d;
+        }
+        Self {
+            pow10coe,
+            prefix: other.prefix,
+        }
+    }
+    pub fn take_red_pow10coe<
+        const N2: i8,
+        const M2: i8,
+        const L2: i8,
+        const T2: i8,
+        const THETA2: i8,
+        const I2: i8,
+        const J2: i8,
+    >(&mut self, other: &UnitSystem<N2, M2, L2, T2, THETA2, I2, J2>) -> i8 {
+        let red = self.pow10coe - other.pow10coe;
+        self.pow10coe = other.pow10coe;
+        red
     }
 }
 
@@ -47,21 +134,20 @@ impl<
     const J: i8,
 > std::fmt::Debug for UnitSystem<N, M, L, T, THETA, I, J> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let maybe_unit = |unit: &str, d: i8| -> String {
+        let maybe_unit = |prefix: &SIPrefix, unit: &str, d: i8| -> String {
             match d {
                 0 => "".to_string(),
-                1 => format!("{} ", unit),
-                _ => format!("{}^{} ", unit, d),
+                1 => format!("{}{} ", prefix, unit),
+                _ => format!("{}{}^{} ", prefix, unit, d),
             }
         };
-        let result = maybe_unit("10", self.pow10coe)
-            + maybe_unit("mol", N).as_str()
-            + maybe_unit("g", M).as_str()
-            + maybe_unit("m", L).as_str()
-            + maybe_unit("s", T).as_str()
-            + maybe_unit("K", THETA).as_str()
-            + maybe_unit("A", I).as_str()
-            + maybe_unit("cd", J).as_str();
+        let result = self.prefix.iter()
+            .zip([N, M, L, T, THETA, I, J])
+            .zip(["mol", "g", "m", "s", "K", "A", "cd"])
+            .map(|((p, d), name)| maybe_unit(p, name, d))
+            .collect::<Vec<_>>()
+            .concat();
+        let result = maybe_unit(&SIPrefix::NoPrefix, "10", self.pow10coe) + result.as_str();
         write!(f, "{}", result)
     }
 }
@@ -77,6 +163,7 @@ impl<
 > ops::Add for UnitSystem<N, M, L, T, THETA, I, J> {
     type Output = Self;
     fn add(self, rhs: Self) -> Self::Output {
+        let rhs = rhs.into_same_prefix_with(&self);
         assert_eq!(self.pow10coe, rhs.pow10coe);
         self
     }
@@ -93,8 +180,8 @@ impl<
 > ops::Sub for UnitSystem<N, M, L, T, THETA, I, J> {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self::Output {
-        assert_eq!(self.pow10coe, rhs.pow10coe);
-        self
+        // 単位レベルでは足し算と同じ
+        self + rhs
     }
 }
 
@@ -125,7 +212,12 @@ where
 {
     type Output = UnitSystem<{N1+N2}, {M1+M2}, {L1+L2}, {T1+T2}, {THETA1+THETA2}, {I1+I2}, {J1+J2}>;
     fn mul(self, rhs: UnitSystem<N2, M2, L2, T2, THETA2, I2, J2>) -> Self::Output {
-        Self::Output {pow10coe: self.pow10coe + rhs.pow10coe}
+        let mut pow10coe = 0;
+        let rhs = rhs.into_same_prefix_with(&self);
+        Self::Output {
+            pow10coe: self.pow10coe + rhs.pow10coe,
+            prefix: self.prefix,
+        }
     }
 }
 
@@ -156,7 +248,11 @@ where
 {
     type Output = UnitSystem<{N1-N2}, {M1-M2}, {L1-L2}, {T1-T2}, {THETA1-THETA2}, {I1-I2}, {J1-J2}>;
     fn div(self, rhs: UnitSystem<N2, M2, L2, T2, THETA2, I2, J2>) -> Self::Output {
-        Self::Output {pow10coe: self.pow10coe - rhs.pow10coe}
+        let rhs = rhs.into_same_prefix_with(&self);
+        Self::Output {
+            pow10coe: self.pow10coe - rhs.pow10coe,
+            prefix: self.prefix,
+        }
     }
 }
 
@@ -245,6 +341,32 @@ pub struct DimSigDig<
 }
 
 impl<
+    const N1: i8,
+    const M1: i8,
+    const L1: i8,
+    const T1: i8,
+    const THETA1: i8,
+    const I1: i8,
+    const J1: i8,
+> DimSigDig<N1, M1, L1, T1, THETA1, I1, J1> {
+    pub fn into_same_unit_with<
+        const N2: i8,
+        const M2: i8,
+        const L2: i8,
+        const T2: i8,
+        const THETA2: i8,
+        const I2: i8,
+        const J2: i8,
+    >(&self, other: &DimSigDig<N2, M2, L2, T2, THETA2, I2, J2>) -> Self {
+        let mut unit = self.unit.into_same_prefix_with(&other.unit);
+        let red = unit.take_red_pow10coe(&other.unit);
+        Self {
+            digit: self.digit * 10_f64.powi(red as i32).into(),
+            unit,
+        }
+    }
+}
+impl<
     const N: i8,
     const M: i8,
     const L: i8,
@@ -255,7 +377,7 @@ impl<
 > From<f64> for DimSigDig<N, M, L, T, THETA, I, J> {
     fn from(value: f64) -> Self {
         let digit = SigDig::from(value);
-        let unit = UnitSystem::<N, M, L, T, THETA, I, J>::default();
+        let unit = UnitSystem::default();
         Self {digit, unit}
     }
 }
@@ -276,7 +398,10 @@ impl<
 
 impl DimSigDig<0, 0, 3, 0, 0, 0, 0> {
     pub fn milli_liter_from<U: Into<f64>>(v: U) -> Self {
-        Self::from(v.into())
+        let digit = SigDig::from(v.into());
+        let unit = UnitSystem::default()
+            .meter_prefix(SIPrefix::Centi);
+        Self {digit, unit}
     }
 }
 
@@ -291,12 +416,18 @@ impl<
 > ops::Add for DimSigDig<N, M, L, T, THETA, I, J> {
     type Output = Self;
     fn add(self, rhs: Self) -> Self::Output {
-        let coe = self.unit.pow10coe.max(rhs.unit.pow10coe);
-        let coe1: SigDig = 10_f64.powi((self.unit.pow10coe - coe) as i32).into();
-        let coe2: SigDig = 10_f64.powi((rhs.unit.pow10coe - coe) as i32).into();
-        Self {
-            digit: coe1 * self.digit + coe2 * rhs.digit,
-            unit: UnitSystem::from_coe(coe),
+        if self.digit == 0.0.into() {
+            let this = self.into_same_unit_with(&rhs);
+            Self {
+                digit: this.digit + rhs.digit,
+                unit: rhs.unit,
+            }
+        } else {
+            let rhs = rhs.into_same_unit_with(&self);
+            Self {
+                digit: self.digit + rhs.digit,
+                unit: self.unit,
+            }
         }
     }
 }
@@ -312,12 +443,18 @@ impl<
 > ops::Sub for DimSigDig<N, M, L, T, THETA, I, J> {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self::Output {
-        let coe = self.unit.pow10coe.max(rhs.unit.pow10coe);
-        let coe1: SigDig = 10_f64.powi((self.unit.pow10coe - coe) as i32).into();
-        let coe2: SigDig = 10_f64.powi((rhs.unit.pow10coe - coe) as i32).into();
-        Self {
-            digit: coe1 * self.digit - coe2 * rhs.digit,
-            unit: UnitSystem::from_coe(coe),
+        if self.digit == 0.0.into() {
+            let this = self.into_same_unit_with(&rhs);
+            Self {
+                digit: this.digit - rhs.digit,
+                unit: rhs.unit,
+            }
+        } else {
+            let rhs = rhs.into_same_unit_with(&self);
+            Self {
+                digit: self.digit - rhs.digit,
+                unit: self.unit,
+            }
         }
     }
 }
