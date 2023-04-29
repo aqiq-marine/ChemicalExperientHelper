@@ -62,11 +62,11 @@ impl<
     fn get_degree_array() -> [i8; 7] {
         [N, M, L, T, THETA, I, J]
     }
-    fn gram_prefix(mut self, prefix: SIPrefix) -> Self {
+    fn set_gram_prefix(mut self, prefix: SIPrefix) -> Self {
         self.prefix[1] = prefix;
         self
     }
-    fn meter_prefix(mut self, prefix: SIPrefix) -> Self {
+    fn set_meter_prefix(mut self, prefix: SIPrefix) -> Self {
         self.prefix[2] = prefix;
         self
     }
@@ -87,6 +87,12 @@ impl<
         let mut prefix = self.prefix;
         prefix[2] = meter_prefix;
         self.convert_with_prefix(prefix)
+    }
+    fn pow10(&self, d: i8) -> Self {
+        Self {
+            pow10coe: self.pow10coe + d,
+            ..self.clone()
+        }
     }
     fn into_no_prefix(&self) -> Self {
         let degree = Self::get_degree_array();
@@ -324,12 +330,39 @@ type BasicUnit<const N: i8, const M: i8, const L: i8> = UnitSystem<N, M, L, 0, 0
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 struct SigDig {
     sig_dig: usize,
-    digit: f64,
+    num: f64,
+}
+
+impl SigDig {
+    fn set_sig_dig(&self, sig_dig: usize) -> Self {
+        Self {sig_dig, num: self.num}
+    }
+    fn last_sig_dig(&self) -> i32 {
+        if self.num == 0.0 {
+            return -(self.sig_dig as i32);
+        }
+        // 桁数
+        let d = self.num.abs().log10().floor() as i32;
+        d - self.sig_dig as i32
+    }
+    fn round(&self) -> Self {
+        let digit = self.last_sig_dig();
+        let last_digit = (self.num * 10_f64.powi(-digit)).floor() as i32 % 10;
+        let uncertain = self.num * 10_f64.powi(-digit+1);
+        let uncertain_digit = uncertain as i32 % 10;
+        let under_num = uncertain.fract();
+        let num = if uncertain_digit == 5 && under_num == 0.0 && last_digit % 2 == 0 {
+            (self.num * 10_f64.powi(-digit)).floor() * 10_f64.powi(digit)
+        } else {
+            (self.num * 10_f64.powi(-digit)).round() * 10_f64.powi(digit)
+        };
+        Self {num, sig_dig: self.sig_dig}
+    }
 }
 
 impl std::fmt::Display for SigDig {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.digit)
+        write!(f, "{}", self.round().num)
     }
 }
 
@@ -337,7 +370,17 @@ impl From<f64> for SigDig {
     fn from(value: f64) -> Self {
         Self {
             sig_dig: 10,
-            digit: value,
+            num: value,
+        }
+    }
+}
+
+impl ops::Neg for SigDig {
+    type Output = Self;
+    fn neg(self) -> Self::Output {
+        Self::Output {
+            sig_dig: self.sig_dig,
+            num: -self.num,
         }
     }
 }
@@ -345,9 +388,17 @@ impl From<f64> for SigDig {
 impl ops::Add for SigDig {
     type Output = Self;
     fn add(self, rhs: Self) -> Self::Output {
+        let result_num = self.num + rhs.num;
+        let sig_dig = {
+            let self_last = self.last_sig_dig();
+            let other_last = self.last_sig_dig();
+            let last_digit = self_last.min(other_last);
+            let result_num_digit = result_num.log10().floor() as i32;
+            (result_num_digit - last_digit) as usize
+        };
         Self {
-            sig_dig: self.sig_dig + rhs.sig_dig,
-            digit: self.digit + rhs.digit,
+            sig_dig,
+            num: self.num + rhs.num,
         }
     }
 }
@@ -355,10 +406,7 @@ impl ops::Add for SigDig {
 impl ops::Sub for SigDig {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self::Output {
-        Self {
-            sig_dig: self.sig_dig + rhs.sig_dig,
-            digit: self.digit - rhs.digit,
-        }
+        self + (-rhs)
     }
 }
 
@@ -367,7 +415,7 @@ impl ops::Mul for SigDig {
     fn mul(self, rhs: Self) -> Self::Output {
         Self {
             sig_dig: self.sig_dig.min(rhs.sig_dig),
-            digit: self.digit * rhs.digit,
+            num: self.num * rhs.num,
         }
     }
 }
@@ -377,14 +425,14 @@ impl ops::Div for SigDig {
     fn div(self, rhs: Self) -> Self::Output {
         Self {
             sig_dig: self.sig_dig.min(rhs.sig_dig),
-            digit: self.digit / rhs.digit,
+            num: self.num / rhs.num,
         }
     }
 }
 
 impl std::cmp::PartialOrd for SigDig {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.digit.partial_cmp(&other.digit)
+        self.num.partial_cmp(&other.num)
     }
 }
 
@@ -433,16 +481,29 @@ impl<
     }
     pub fn normalized(&self) -> Self {
         let mut result = self.clone();
-        if result.digit.digit == 0.0 {
+        if result.digit.num == 0.0 {
             return result;
         }
-        let d = result.digit.digit.abs().log10().floor() as i32;
-        result.digit.digit *= 10_f64.powi(-d);
+        let d = result.digit.num.abs().log10().floor() as i32;
+        result.digit.num *= 10_f64.powi(-d);
         assert!(d.abs() <= std::i8::MAX as i32);
         result.unit.pow10coe += d as i8;
         result
     }
+    pub fn pow10(&self, d: i8) -> Self {
+        Self {
+            unit: self.unit.pow10(d),
+            ..self.clone()
+        }
+    }
+    pub fn set_sig_dig(&self, sig_dig: usize) -> Self {
+        Self {
+            digit: self.digit.set_sig_dig(sig_dig),
+            unit: self.unit,
+        }
+    }
 }
+
 impl<
         const N: i8,
         const M: i8,
@@ -476,10 +537,25 @@ impl<
     }
 }
 
+impl<
+        const N: i8,
+        const M: i8,
+        const L: i8,
+        const T: i8,
+        const THETA: i8,
+        const I: i8,
+        const J: i8,
+    > std::fmt::Display for DimSigDig<N, M, L, T, THETA, I, J>
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} [{:?}]", self.digit, self.unit)
+    }
+}
+
 impl DimSigDig<0, 0, 3, 0, 0, 0, 0> {
     pub fn milli_liter_from<U: Into<f64>>(v: U) -> Self {
         let digit = SigDig::from(v.into());
-        let unit = UnitSystem::default().meter_prefix(SIPrefix::Centi);
+        let unit = UnitSystem::default().set_meter_prefix(SIPrefix::Centi);
         Self { digit, unit }
     }
     pub fn convert_to_milli_liter(self) -> Self {
