@@ -21,13 +21,15 @@ impl SigDig {
     pub fn set_sig_dig(&self, sig_dig: usize) -> Self {
         Self {sig_dig, num: self.num}
     }
+    // 一番下の桁
+    // 不確かさを含む桁のa.bcd...*10^x
     fn last_sig_dig(&self) -> i32 {
         if self.num == 0.0 {
             return -(self.sig_dig as i32);
         }
-        // 桁数
+        // 桁数的な物
         let d = self.num.abs().log10().floor() as i32;
-        d - self.sig_dig as i32
+        d - self.sig_dig as i32 + 1
     }
     pub fn round(&self) -> Self {
         let digit = self.last_sig_dig();
@@ -46,15 +48,24 @@ impl SigDig {
 
 impl std::fmt::Display for SigDig {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.round().num)
+        let num = self.round().num;
+        let num = format!("{:.20}", num);
+        let digit = self.last_sig_dig();
+        let digit = if digit >= 0 {
+            self.sig_dig
+        } else {
+            // 小数点の+1
+            self.sig_dig+1
+        };
+        write!(f, "{}", &num[..digit])
     }
 }
 
-impl From<f64> for SigDig {
-    fn from(value: f64) -> Self {
+impl<U: Into<f64>> From<U> for SigDig {
+    fn from(value: U) -> Self {
         Self {
-            sig_dig: 10,
-            num: value,
+            sig_dig: 20,
+            num: value.into(),
         }
     }
 }

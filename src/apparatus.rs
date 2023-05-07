@@ -4,6 +4,18 @@ use crate::substance::*;
 use std::collections::HashMap;
 
 trait HasVolume {
+    // err: 許容誤差 < 1.0
+    fn calc_sig_dig(v: usize, err: f64) -> usize {
+        let err = err.abs();
+        let mut err_digit = 0;
+        for i in 0..20 {
+            if err * 10_f64.powi(i) >= 0.5  {
+                err_digit = i as usize;
+                break;
+            }
+        }
+        (v as f64).log10().floor() as usize + 1 + err_digit
+    }
     fn get_volume() -> Volume;
 }
 
@@ -14,6 +26,7 @@ pub struct Beaker<const V: usize> {
 impl<const V: usize> HasVolume for Beaker<V> {
     fn get_volume() -> Volume {
         DimSigDig::milli_liter_from(V as u32)
+            .set_sig_dig(3)
     }
 }
 
@@ -56,7 +69,9 @@ pub struct VolumetricFlask<const V: usize> {
 
 impl<const V: usize> HasVolume for VolumetricFlask<V> {
     fn get_volume() -> Volume {
+        let sig_dig = Self::calc_sig_dig(V, 0.2);
         DimSigDig::milli_liter_from(V as u32)
+            .set_sig_dig(sig_dig)
     }
 }
 
@@ -75,13 +90,12 @@ impl<const V: usize> VolumetricFlask<V> {
         self
     }
     pub fn fillup(mut self) -> Self {
-        self.solution.to_be_certain_volume(Self::get_volume());
+        self.solution.to_be(Self::get_volume());
         self
     }
     pub fn into_pipette_mut<const U: usize>(&mut self, pipette: &mut Pipette<U>) {
         let v = Pipette::<U>::get_volume();
         assert!(v < self.solution.get_volume());
-        // ここで正確にはかりとりたい
         let s = self.solution.dispense(v);
         pipette.aspirate_solution(s);
     }
@@ -97,7 +111,10 @@ pub struct Pipette<const V: usize> {
 
 impl<const V: usize> HasVolume for Pipette<V> {
     fn get_volume() -> Volume {
+        // 許容誤差0.03
+        let sig_dig = Self::calc_sig_dig(V, 0.03);
         DimSigDig::milli_liter_from(V as u32)
+            .set_sig_dig(sig_dig)
     }
 }
 

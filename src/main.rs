@@ -14,8 +14,8 @@ fn main() {
         .add_substance(
             Substance::create(
                 "Mohr".to_string(),
-                392.1.into(),
-                0.4019.into(),
+                DimSigDig::molar_mass_from(392.1).set_sig_dig(4),
+                DimSigDig::gram_from(0.4019).set_sig_dig(4),
                 0.0.into(),
             )
         )

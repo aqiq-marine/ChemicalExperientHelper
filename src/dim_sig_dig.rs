@@ -19,6 +19,13 @@ pub struct DimSigDig<
     unit: UnitSystem<N, M, L, T, THETA, I, J>,
 }
 
+pub type BasicDimSigDig<const N: i8, const M: i8, const L: i8> = DimSigDig<N, M, L, 0, 0, 0, 0>;
+
+pub type Mol = BasicDimSigDig<1, 0, 0>;
+pub type Mass = BasicDimSigDig<0, 1, 0>;
+pub type Volume = BasicDimSigDig<0, 0, 3>;
+pub type NoDim = BasicDimSigDig<0, 0, 0>;
+
 impl<
         const N1: i8,
         const M1: i8,
@@ -73,9 +80,17 @@ impl<
     }
 }
 
-impl DimSigDig<0, 0, 3, 0, 0, 0, 0> {
+impl Mass {
+    pub fn gram_from<U: Into<f64>>(m: U) -> Self {
+        let digit = SigDig::from(m);
+        let unit = UnitSystem::default();
+        Self { digit, unit }
+    }
+}
+
+impl Volume {
     pub fn milli_liter_from<U: Into<f64>>(v: U) -> Self {
-        let digit = SigDig::from(v.into());
+        let digit = SigDig::from(v);
         let unit = UnitSystem::default().set_meter_prefix(SIPrefix::Centi);
         Self { digit, unit }
     }
@@ -93,7 +108,15 @@ impl DimSigDig<0, 0, 3, 0, 0, 0, 0> {
     }
 }
 
-impl DimSigDig<1, 0, -3, 0, 0, 0, 0> {
+impl BasicDimSigDig<-1, 1, 0> {
+    pub fn molar_mass_from<U: Into<f64>>(m: U) -> Self {
+        let digit = SigDig::from(m);
+        let unit = UnitSystem::default();
+        Self {digit, unit}
+    }
+}
+
+impl BasicDimSigDig<1, 0, -3> {
     pub fn molar_from<U: Into<f64>>(c: U) -> Self {
         let digit = SigDig::from(c.into());
         let unit = UnitSystem::default()
@@ -356,9 +379,3 @@ impl<
     }
 }
 
-pub type BasicDimSigDig<const N: i8, const M: i8, const L: i8> = DimSigDig<N, M, L, 0, 0, 0, 0>;
-
-pub type Mol = BasicDimSigDig<1, 0, 0>;
-pub type Mass = BasicDimSigDig<0, 1, 0>;
-pub type Volume = BasicDimSigDig<0, 0, 3>;
-pub type NoDim = BasicDimSigDig<0, 0, 0>;

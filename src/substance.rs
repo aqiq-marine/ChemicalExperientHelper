@@ -74,10 +74,6 @@ impl Solution {
                 .add_same_substance(solute);
         }
     }
-    pub fn to_be_certain_volume(&mut self, v: Volume) {
-        assert!(self.volume <= v);
-        self.volume = v;
-    }
     pub fn to_be(&mut self, v: Volume) {
         assert!(self.volume <= v);
         self.volume = v;
