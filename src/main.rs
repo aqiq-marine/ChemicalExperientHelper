@@ -6,8 +6,8 @@ use substance::*;
 mod apparatus;
 use apparatus::*;
 
-mod unit_system;
-use unit_system::*;
+mod dim_sig_dig;
+use dim_sig_dig::*;
 
 fn main() {
     let mut beaker = Beaker::<100>::new()
@@ -19,7 +19,7 @@ fn main() {
                 0.0.into(),
             )
         )
-        .fillup_up_to(Volume::milli_liter_from(20));
+        .fillup_up_to(Volume::milli_liter_from(20).set_sig_dig(2));
     let mut flask1 = beaker.into_volumetric_flask(VolumetricFlask::<100>::new())
         .fillup();
     let flask2 = flask1.into_pipette(Pipette::<5>::new())
