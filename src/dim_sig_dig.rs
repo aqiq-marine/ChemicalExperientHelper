@@ -5,7 +5,7 @@ mod sig_dig;
 pub use sig_dig::*;
 
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct DimSigDig<
     const N: i8,
     const M: i8,
@@ -36,6 +36,9 @@ impl<
         const J1: i8,
     > DimSigDig<N1, M1, L1, T1, THETA1, I1, J1>
 {
+    pub fn get_raw_num(&self) -> f64 {
+        self.digit.get_raw_num()
+    }
     pub fn into_same_unit_with<
         const N2: i8,
         const M2: i8,
@@ -61,10 +64,11 @@ impl<
             return result;
         }
         let d = result.digit.calc_number_of_digit();
+        // pow10: &mut self
         result.digit.pow10(-d);
         assert!(d.abs() <= std::i8::MAX as i32);
-        result.pow10(d as i8);
-        result
+        // pow10: &self -> Self
+        result.pow10(d as i8)
     }
     pub fn pow10(&self, d: i8) -> Self {
         Self {
@@ -149,21 +153,20 @@ impl<
     }
 }
 
-impl<
-        const N: i8,
-        const M: i8,
-        const L: i8,
-        const T: i8,
-        const THETA: i8,
-        const I: i8,
-        const J: i8,
-    > std::fmt::Debug for DimSigDig<N, M, L, T, THETA, I, J>
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let this = self.normalized();
-        write!(f, "{} [{:?}]", this.digit, this.unit)
-    }
-}
+// impl<
+//         const N: i8,
+//         const M: i8,
+//         const L: i8,
+//         const T: i8,
+//         const THETA: i8,
+//         const I: i8,
+//         const J: i8,
+//     > std::fmt::Debug for DimSigDig<N, M, L, T, THETA, I, J>
+// {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         write!(f, "{} [{:?}]", self.digit, self.unit)
+//     }
+// }
 
 impl<
         const N: i8,

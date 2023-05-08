@@ -27,44 +27,52 @@ impl SigDig {
         if self.num == 0.0 {
             return -(self.sig_dig as i32);
         }
-        // 桁数的な物
-        let d = self.num.abs().log10().floor() as i32;
-        d - self.sig_dig as i32 + 1
+        self.calc_number_of_digit() - self.sig_dig as i32 + 1
     }
-    pub fn round(&self) -> Self {
+    pub fn round(&self) -> (i64, i32) {
         let digit = self.last_sig_dig();
-        let last_digit = (self.num * 10_f64.powi(-digit)).floor() as i32 % 10;
-        let uncertain = self.num * 10_f64.powi(-digit+1);
-        let uncertain_digit = uncertain as i32 % 10;
-        let under_num = uncertain.fract();
-        let num = if uncertain_digit == 5 && under_num == 0.0 && last_digit % 2 == 0 {
-            (self.num * 10_f64.powi(-digit)).floor() * 10_f64.powi(digit)
+
+        let num = self.num * 10_f64.powi(-digit);
+
+        let uncertain = num.trunc() as i64 % 10;
+        let certain_last = (num.trunc() as i64 % 100) / 10;
+        let under_uncertain = num.fract();
+
+        let num = if uncertain == 5 && under_uncertain == 0.0 && certain_last % 2 == 0 {
+            (self.num * 10_f64.powi(-digit)).floor()
         } else {
-            (self.num * 10_f64.powi(-digit)).round() * 10_f64.powi(digit)
-        };
-        Self {num, sig_dig: self.sig_dig}
+            (self.num * 10_f64.powi(-digit)).round()
+        } as i64;
+        (num, digit)
     }
 }
 
 impl std::fmt::Display for SigDig {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let num = self.round().num;
-        let num = format!("{:.20}", num);
-        let digit = self.last_sig_dig();
-        let digit = if digit >= 0 {
-            self.sig_dig
+        let (num, digit) = self.round();
+        let num = format!("{}", num);
+        let num = if digit >= 0 {
+            num + "0".repeat(digit as usize).as_str()
         } else {
-            // 小数点の+1
-            self.sig_dig+1
+            let v = digit.abs();
+            let index = num.len() as i32 - v;
+            if index > 0 {
+                let index = index as usize;
+                num[..index].to_string() + "." + &num[index..]
+            } else {
+                "0.".to_string()
+                    + "0".repeat(index.abs() as usize).as_str()
+                    + num.as_str()
+            }
         };
-        write!(f, "{}", &num[..digit])
+        write!(f, "{}", num)
     }
 }
 
 impl<U: Into<f64>> From<U> for SigDig {
     fn from(value: U) -> Self {
         Self {
-            sig_dig: 20,
+            sig_dig: 10,
             num: value.into(),
         }
     }

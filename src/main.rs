@@ -26,13 +26,13 @@ fn main() {
         .into_flask(VolumetricFlask::<200>::new())
         .fillup();
     println!(
-        "{:?}",
+        "{}",
         flask2
             .get_concentration()
             .get(&"Mohr".to_string())
             .cloned()
             .unwrap_or(0.0.into())
             .convert_to_molar()
+            .normalized()
     );
-
 }
