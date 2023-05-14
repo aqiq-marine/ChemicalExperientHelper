@@ -10,6 +10,12 @@ impl SigDig {
     pub fn get_raw_num(&self) -> f64 {
         self.num
     }
+    pub fn is_close_to(&self, other: &Self) -> bool {
+        let m = self.sig_dig.min(other.sig_dig);
+        let this = self.set_sig_dig(m);
+        let other = other.set_sig_dig(m);
+        format!("{}", this) == format!("{}", other)
+    }
     // 桁数
     // a.bcd... * 10 ^ number of digit
     pub fn calc_number_of_digit(&self) -> i32 {

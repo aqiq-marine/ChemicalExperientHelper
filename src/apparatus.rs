@@ -41,7 +41,7 @@ impl<const V: usize> Beaker<V> {
         assert!(self.solution.get_volume() <= Self::get_volume());
         self
     }
-    pub fn add_substance(mut self, s: Substance) -> Self {
+    pub fn add_substance(mut self, s: Solid) -> Self {
         self.solution.add_substance(s);
         assert!(self.solution.get_volume() <= Self::get_volume());
         self
@@ -83,6 +83,9 @@ impl<const V: usize> VolumetricFlask<V> {
     }
     pub fn get_concentration(&self) -> HashMap<String, BasicDimSigDig<1, 0, -3>> {
         self.solution.get_concentration()
+    }
+    pub fn get_mol_by_name(&self, name: &str) -> Mol {
+        self.solution.get_mol_by_name(name)
     }
     pub fn add_solution(mut self, l: Solution) -> Self {
         self.solution.add_solution(l);

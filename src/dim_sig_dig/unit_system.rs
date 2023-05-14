@@ -37,7 +37,7 @@ impl SIPrefix {
 }
 
 
-#[derive(Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct UnitSystem<
     const N: i8,
     const M: i8,
@@ -124,6 +124,7 @@ impl<
         const J1: i8,
     > UnitSystem<N1, M1, L1, T1, THETA1, I1, J1>
 {
+    // 掛け算などに利用するため異なる単位間でも可能にしてある
     pub fn into_same_prefix_with<
         const N2: i8,
         const M2: i8,
@@ -137,7 +138,7 @@ impl<
         other: &UnitSystem<N2, M2, L2, T2, THETA2, I2, J2>,
     ) -> Self {
         // prefixをotherに合わせる
-        let mut pow10coe = 0;
+        let mut pow10coe = self.pow10coe;
         let mut prefix = other.prefix.clone();
         let degree1 = Self::get_degree_array();
         let degree2 = [N2, M2, L2, T2, THETA2, I2, J2];
@@ -158,7 +159,7 @@ impl<
             prefix,
         }
     }
-    pub fn take_red_pow10coe<
+    pub fn take_diff_of_pow10coe<
         const N2: i8,
         const M2: i8,
         const L2: i8,
@@ -170,11 +171,28 @@ impl<
         &mut self,
         other: &UnitSystem<N2, M2, L2, T2, THETA2, I2, J2>,
     ) -> i8 {
+        println!("{}, {}", self.pow10coe, other.pow10coe);
         let red = self.pow10coe - other.pow10coe;
         self.pow10coe = other.pow10coe;
         red
     }
 }
+
+#[test]
+fn into_same_prefix_test() {
+    let cubic_meter = UnitSystem::<0, 0, 3, 0, 0, 0, 0>::default()
+        .pow10(-3);
+    let liter = UnitSystem::default()
+        .set_meter_prefix(SIPrefix::Deci);
+    let milli_liter = UnitSystem::default()
+        .set_meter_prefix(SIPrefix::Centi)
+        .pow10(3);
+    assert_eq!(cubic_meter.into_same_prefix_with(&liter), liter);
+    assert_eq!(liter, milli_liter.into_same_prefix_with(&liter));
+}
+
+
+
 
 impl<
         const N: i8,
@@ -184,7 +202,7 @@ impl<
         const THETA: i8,
         const I: i8,
         const J: i8,
-    > std::fmt::Debug for UnitSystem<N, M, L, T, THETA, I, J>
+    > std::fmt::Display for UnitSystem<N, M, L, T, THETA, I, J>
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let maybe_unit = |prefix: &SIPrefix, unit: &str, d: i8| -> String {

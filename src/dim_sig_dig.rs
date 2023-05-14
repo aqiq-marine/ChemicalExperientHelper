@@ -25,6 +25,7 @@ pub type Mol = BasicDimSigDig<1, 0, 0>;
 pub type Mass = BasicDimSigDig<0, 1, 0>;
 pub type Volume = BasicDimSigDig<0, 0, 3>;
 pub type NoDim = BasicDimSigDig<0, 0, 0>;
+pub type MolarMass = BasicDimSigDig<-1, 1, 0>;
 
 impl<
         const N1: i8,
@@ -39,6 +40,10 @@ impl<
     pub fn get_raw_num(&self) -> f64 {
         self.digit.get_raw_num()
     }
+    pub fn is_close_to(&self, other: &Self) -> bool {
+        let other = other.into_same_unit_with(&self);
+        self.digit.is_close_to(&other.digit)
+    }
     pub fn into_same_unit_with<
         const N2: i8,
         const M2: i8,
@@ -52,7 +57,8 @@ impl<
         other: &DimSigDig<N2, M2, L2, T2, THETA2, I2, J2>,
     ) -> Self {
         let mut unit = self.unit.into_same_prefix_with(&other.unit);
-        let red = unit.take_red_pow10coe(&other.unit);
+        println!("{}, {}", unit, other.unit);
+        let red = unit.take_diff_of_pow10coe(&other.unit);
         Self {
             digit: self.digit * 10_f64.powi(red as i32).into(),
             unit,
@@ -153,21 +159,6 @@ impl<
     }
 }
 
-// impl<
-//         const N: i8,
-//         const M: i8,
-//         const L: i8,
-//         const T: i8,
-//         const THETA: i8,
-//         const I: i8,
-//         const J: i8,
-//     > std::fmt::Debug for DimSigDig<N, M, L, T, THETA, I, J>
-// {
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//         write!(f, "{} [{:?}]", self.digit, self.unit)
-//     }
-// }
-
 impl<
         const N: i8,
         const M: i8,
@@ -179,7 +170,7 @@ impl<
     > std::fmt::Display for DimSigDig<N, M, L, T, THETA, I, J>
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} [{:?}]", self.digit, self.unit)
+        write!(f, "{} [{}]", self.digit, self.unit)
     }
 }
 

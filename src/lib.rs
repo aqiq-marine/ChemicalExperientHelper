@@ -1,0 +1,62 @@
+#![feature(generic_const_exprs)]
+
+mod substance;
+use substance::*;
+
+mod apparatus;
+use apparatus::*;
+
+mod dim_sig_dig;
+use dim_sig_dig::*;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn mohr1() {
+        let mut beaker = Beaker::<100>::new()
+            .add_substance(Solid::create(
+                Substance::create(
+                    "Mohr".to_string(),
+                    DimSigDig::molar_mass_from(392.1).set_sig_dig(4),
+                ),
+                DimSigDig::gram_from(0.4019).set_sig_dig(4),
+                0.0.into(),
+            ))
+            .fillup_up_to(Volume::milli_liter_from(20).set_sig_dig(2));
+        let mut flask1 = beaker
+            .into_volumetric_flask(VolumetricFlask::<100>::new())
+            .fillup();
+        let flask2 = flask1
+            .into_pipette(Pipette::<5>::new())
+            .into_flask(VolumetricFlask::<200>::new())
+            .fillup();
+        let mohr_concentration = flask2
+            .get_concentration()
+            .get(&"Mohr".to_string())
+            .cloned()
+            .unwrap_or(0.0.into())
+            .convert_to_molar()
+            .normalized();
+        let expected = DimSigDig::molar_from(2.562).pow10(-4).set_sig_dig(4);
+        println!("{} is close to {}", mohr_concentration, expected);
+        assert!(mohr_concentration.is_close_to(&expected));
+    }
+    #[test]
+    fn mohr2() {
+        let c = Beaker::<100>::new()
+            .add_substance(Solid::create(
+                Substance::create(
+                    "Fe".to_string(),
+                    DimSigDig::molar_mass_from(55.85).set_sig_dig(4),
+                ),
+                1.0.into(),
+                0.0.into(),
+            )).fillup_up_to(Volume::milli_liter_from(46))
+            .into_volumetric_flask(VolumetricFlask::<100>::new())
+            .get_mol_by_name("Fe");
+        let expected = 0.017905.into();
+        println!("{} is close to {}", c, expected);
+        assert!(c.is_close_to(&expected));
+    }
+}
