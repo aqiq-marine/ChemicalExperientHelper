@@ -27,6 +27,9 @@ impl Solid {
     pub fn get_name(&self) -> String {
         self.substance.name.clone()
     }
+    fn get_mass(&self) -> Mass {
+        self.mass
+    }
     fn get_mol(&self) -> Mol {
         self.mass / self.substance.molar_mass
     }
@@ -60,6 +63,9 @@ impl Solution {
     }
     pub fn get_volume(&self) -> BasicDimSigDig<0, 0, 3> {
         self.volume
+    }
+    pub fn get_mass_by_name(&self, name: &str) -> Mass {
+        self.solute.get(name).map(|s| s.get_mass()).unwrap_or(0.0.into())
     }
     pub fn get_mol_by_name(&self, name: &str) -> Mol {
         self.solute.get(name).map(|s| s.get_mol()).unwrap_or(0.0.into())
@@ -104,7 +110,7 @@ impl Solution {
             solution.volume = v;
             solution
         };
-        self.solute.iter_mut().map(|(_, s)| {
+        self.solute.iter_mut().for_each(|(_, s)| {
             let one: NoDim = 1.0.into();
             let r = one - ratio;
             s.mass = s.mass * r;

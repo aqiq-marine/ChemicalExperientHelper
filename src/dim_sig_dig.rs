@@ -57,7 +57,6 @@ impl<
         other: &DimSigDig<N2, M2, L2, T2, THETA2, I2, J2>,
     ) -> Self {
         let mut unit = self.unit.into_same_prefix_with(&other.unit);
-        println!("{}, {}", unit, other.unit);
         let red = unit.take_diff_of_pow10coe(&other.unit);
         Self {
             digit: self.digit * 10_f64.powi(red as i32).into(),
@@ -118,7 +117,7 @@ impl Volume {
     }
 }
 
-impl BasicDimSigDig<-1, 1, 0> {
+impl MolarMass {
     pub fn molar_mass_from<U: Into<f64>>(m: U) -> Self {
         let digit = SigDig::from(m);
         let unit = UnitSystem::default();
@@ -139,6 +138,12 @@ impl BasicDimSigDig<1, 0, -3> {
             unit: self.unit
                 .convert_meter_prefix(SIPrefix::Deci),
         }
+    }
+}
+
+impl NoDim {
+    pub fn nodim_from<U: Into<f64>>(x: U) -> Self {
+        x.into().into()
     }
 }
 

@@ -99,15 +99,16 @@ impl ops::Add for SigDig {
     fn add(self, rhs: Self) -> Self::Output {
         let result_num = self.num + rhs.num;
         let sig_dig = {
+            // 一番下の有効桁を大きいほうに合わせる
             let self_last = self.last_sig_dig();
             let other_last = self.last_sig_dig();
-            let last_digit = self_last.min(other_last);
+            let last_digit = self_last.max(other_last);
             let result_num_digit = result_num.log10().floor() as i32;
-            (result_num_digit - last_digit) as usize
+            (result_num_digit - last_digit).max(0) as usize + 1
         };
         Self {
             sig_dig,
-            num: self.num + rhs.num,
+            num: result_num,
         }
     }
 }

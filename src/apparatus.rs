@@ -84,6 +84,12 @@ impl<const V: usize> VolumetricFlask<V> {
     pub fn get_concentration(&self) -> HashMap<String, BasicDimSigDig<1, 0, -3>> {
         self.solution.get_concentration()
     }
+    pub fn get_concentration_by_name(&self, name: &str) -> BasicDimSigDig<1, 0, -3> {
+        self.solution.get_concentration()
+            .get(&name.to_string())
+            .cloned()
+            .unwrap_or(0.0.into())
+    }
     pub fn get_mol_by_name(&self, name: &str) -> Mol {
         self.solution.get_mol_by_name(name)
     }

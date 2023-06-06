@@ -66,6 +66,10 @@ impl<
     pub fn get_degree_array() -> [i8; 7] {
         [N, M, L, T, THETA, I, J]
     }
+    pub fn debug_print(self) -> Self {
+        println!("{}", self);
+        self
+    }
     pub fn set_gram_prefix(mut self, prefix: SIPrefix) -> Self {
         self.prefix[1] = prefix;
         self
@@ -139,9 +143,13 @@ impl<
     ) -> Self {
         // prefixをotherに合わせる
         let mut pow10coe = self.pow10coe;
+        // 基本はotherのprefix
+        // degree=0のときはselfのまま
         let mut prefix = other.prefix.clone();
+
         let degree1 = Self::get_degree_array();
         let degree2 = [N2, M2, L2, T2, THETA2, I2, J2];
+
         for ((p1, p2), (d1, d2)) in self
             .prefix
             .iter()
@@ -171,7 +179,7 @@ impl<
         &mut self,
         other: &UnitSystem<N2, M2, L2, T2, THETA2, I2, J2>,
     ) -> i8 {
-        println!("{}, {}", self.pow10coe, other.pow10coe);
+        // 余剰
         let red = self.pow10coe - other.pow10coe;
         self.pow10coe = other.pow10coe;
         red
@@ -180,7 +188,7 @@ impl<
 
 #[test]
 fn into_same_prefix_test() {
-    let cubic_meter = UnitSystem::<0, 0, 3, 0, 0, 0, 0>::default()
+    let cubic_meter = BasicUnit::<0, 0, 3>::default()
         .pow10(-3);
     let liter = UnitSystem::default()
         .set_meter_prefix(SIPrefix::Deci);
@@ -191,6 +199,18 @@ fn into_same_prefix_test() {
     assert_eq!(liter, milli_liter.into_same_prefix_with(&liter));
 }
 
+#[test]
+fn take_diff_of_pow10coe() {
+    let molar = BasicUnit::<1, 0, -3>::default()
+        .set_meter_prefix(SIPrefix::Deci);
+    let mut mol_per_milli_liter= BasicUnit::<1, 0, -3>::default()
+        .set_meter_prefix(SIPrefix::Centi)
+        .into_same_prefix_with(&molar);
+    assert_eq!(
+        mol_per_milli_liter.take_diff_of_pow10coe(&molar),
+        3
+    );
+}
 
 
 
