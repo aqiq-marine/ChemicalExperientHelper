@@ -46,7 +46,7 @@ impl<const V: usize> Beaker<V> {
         assert!(self.solution.get_volume() <= Self::get_volume());
         self
     }
-    pub fn fillup_up_to(mut self, v: Volume) -> Self {
+    pub fn fillup_to(mut self, v: Volume) -> Self {
         assert!(self.solution.get_volume() < v);
         assert!(v < Self::get_volume());
         self.solution.to_be(v);

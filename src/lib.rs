@@ -9,6 +9,8 @@ use apparatus::*;
 mod dim_sig_dig;
 use dim_sig_dig::*;
 
+use chemical_substance::*;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -23,7 +25,7 @@ mod tests {
                 DimSigDig::gram_from(0.4019).set_sig_dig(4),
                 0.0.into(),
             ))
-            .fillup_up_to(Volume::milli_liter_from(20).set_sig_dig(2));
+            .fillup_to(Volume::milli_liter_from(20).set_sig_dig(2));
         let mut flask1 = beaker
             .into_volumetric_flask(VolumetricFlask::<100>::new())
             .fillup();
@@ -77,7 +79,7 @@ mod tests {
                 ),
                 1.0.into(),
                 0.0.into(),
-            )).fillup_up_to(Volume::milli_liter_from(46))
+            )).fillup_to(Volume::milli_liter_from(46))
             .into_volumetric_flask(VolumetricFlask::<100>::new())
             .get_mol_by_name("Fe");
         let expected = 0.017905.into();
