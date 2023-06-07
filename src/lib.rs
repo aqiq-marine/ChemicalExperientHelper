@@ -9,7 +9,6 @@ use apparatus::*;
 mod dim_sig_dig;
 use dim_sig_dig::*;
 
-use chemical_substance::*;
 
 #[cfg(test)]
 mod tests {
